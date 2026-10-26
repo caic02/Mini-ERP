@@ -1,5 +1,6 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
+import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import {
   emptyDataset,
@@ -34,6 +35,31 @@ try {
   );
   // Uma cópia tem identidade própria e não transporta sessões de login.
   data.models.Session = [];
+  if (process.argv.includes("--public-demo")) {
+    // Somente para os cadastros fictícios autorizados para publicação.
+    // O modo normal de exportação continua preservando as credenciais.
+    const originalHashes = data.models.User.map(
+      (user) => user.passwordHash,
+    ).filter((hash) => hash.startsWith("$2"));
+    for (const [index, user] of data.models.User.entries()) {
+      if (user.username !== "sistema.ferias")
+        user.username = "historico-" + (index + 1);
+      user.passwordHash = "!";
+      user.active = false;
+    }
+    const admin = data.models.User.find(
+      (user) => user.role === "RH" && user.username !== "sistema.ferias",
+    );
+    assert.ok(admin, "A demonstração precisa ter um autor de RH existente.");
+    admin.username = "demo";
+    admin.passwordHash = await bcrypt.hash("DemoMiniERP2026!", 12);
+    admin.active = true;
+    const payload = JSON.stringify(data);
+    assert.ok(
+      originalHashes.every((hash) => !payload.includes(hash)),
+      "Credencial original encontrada na cópia pública.",
+    );
+  }
   validateDataset(data);
   const store = await createFile(destination, data);
   const saved = (await store.read()).data;

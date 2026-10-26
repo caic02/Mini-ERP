@@ -12,7 +12,9 @@ Para usar uma base na pasta compartilhada do servidor, abra **Iniciar-MiniERP.cm
 2. Com **Node.js 22 ou superior e npm** disponíveis, feche o programa e execute **Preparar-MiniERP.cmd**. Ele baixa as dependências, gera o cliente e compila a interface; precisa de internet nessa primeira preparação. Não instala PostgreSQL, não cria banco e não muda firewall.
 3. Abra **Iniciar-MiniERP.cmd** e selecione a base `.mdb` da pasta compartilhada. Se for começar sem cadastros, a tela oferece **Criar base vazia**.
 
-O GitHub contém o código. Dependências, interface compilada, `.env`, bases, credenciais e capturas dos cadastros não são publicados. Para manter a demonstração já cadastrada, leve `base-portatil-20261026.mdb` separadamente para o servidor; baixar o ZIP não inclui esses dados. Não envie a base para o repositório público.
+O ZIP inclui uma cópia pública dos dados fictícios em **demo/base-demonstracao.mdb**. Selecione esse arquivo na abertura e use **usuário `demo` / senha `DemoMiniERP2026!`**. As credenciais originais e sessões foram substituídas somente nessa cópia; detalhes em [Base de demonstração](demo/README.md).
+
+Dependências, interface compilada, `.env`, bases de uso e capturas dos cadastros não são publicados. A única base permitida no Git é essa cópia específica de demonstração. Para usar os dados da sua cópia local com as credenciais atuais, continue levando `base-portatil-20261026.mdb` separadamente. Não publique futuras bases com dados reais.
 
 ### Preparação do modo PostgreSQL
 
@@ -107,7 +109,7 @@ Para uma futura rede interna, configure origem única, proxy HTTPS interno, cook
 
 **Iniciar-MiniERP.cmd** abre a configuração antes do login: informe o caminho, teste a leitura e salve. Os dois computadores devem selecionar o mesmo arquivo do servidor. O caminho é reutilizado e pode ser alterado pelo login. Criar uma base vazia é uma ação separada, com usuário administrador próprio. Arquivos indisponíveis não são recriados automaticamente.
 
-`npm.cmd run storage:export -- --out 'C:\DadosMiniERP\base.mdb'` gera uma cópia consistente dos dados atuais em um arquivo novo, sem alterar o PostgreSQL. Foi preparada `.tools/base-portatil-20261026.mdb` com os dados da demonstração. Após selecionar o arquivo, os dois modos funcionam de forma independente; não existe sincronização com o PostgreSQL.
+`npm.cmd run storage:export -- --out 'C:\DadosMiniERP\base.mdb'` gera uma cópia consistente dos dados atuais em um arquivo novo, sem alterar o PostgreSQL. Foi preparada `.tools/base-portatil-20261026.mdb` com os dados da demonstração. A versão pública, com acesso próprio, fica em `demo/base-demonstracao.mdb`. Após selecionar o arquivo, os dois modos funcionam de forma independente; não existe sincronização com o PostgreSQL ou GitHub.
 
 `npm.cmd run storage:check` mantém o diagnóstico independente de componentes e concorrência; `--folder` indica uma pasta de teste na hora. O novo adaptador e a configuração foram testados localmente, incluindo dois processos. Ainda falta homologar os dois PCs e o compartilhamento real da empresa. Instruções completas, backup consistente e limites em [ARMAZENAMENTO-COMPARTILHADO.md](docs/ARMAZENAMENTO-COMPARTILHADO.md).
 
