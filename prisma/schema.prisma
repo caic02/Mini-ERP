@@ -1,0 +1,484 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+model User {
+  id String @id @default(uuid())
+  username String @unique
+  passwordHash String
+  role String @default("RH")
+  active Boolean @default(true)
+  sessions Session[]
+  audits Audit[]
+  measurementChanges Measurement[]
+  measurementHistory MeasurementHistory[]
+}
+model Session {
+  id String @id
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  expiresAt DateTime @db.Timestamptz(3)
+  csrf String
+  @@index([userId])
+}
+model Company {
+  id String @id @default("middleby")
+  name String @default("Middleby do Brasil")
+  legalName String?
+  code String @unique @default("MIDDLEBY")
+  notes String?
+  targetMonths Int @default(11)
+  alertDays Int[] @default([90,60,30])
+  units Unit[]
+  costCenters CostCenter[]
+}
+model Unit {
+  id String @id @default(uuid())
+  code String @unique
+  name String
+  kind String
+  companyId String @default("middleby")
+  company Company @relation(fields:[companyId], references:[id], onDelete:Restrict)
+  cnpj String?
+  address String?
+  city String?
+  state String?
+  active Boolean @default(true)
+  costCenters CostCenterUnit[]
+  employments Employment[]
+  assignments Assignment[]
+  contracts Contract[]
+  measurements Measurement[]
+  measurementLines MeasurementLine[]
+}
+model CostCenter {
+  id String @id @default(uuid())
+  code String @unique
+  name String
+  companyId String @default("middleby")
+  company Company @relation(fields:[companyId], references:[id], onDelete:Restrict)
+  active Boolean @default(true)
+  units CostCenterUnit[]
+  employments Employment[]
+  assignments Assignment[]
+  measurementLines MeasurementLine[]
+}
+model CostCenterUnit {
+  costCenterId String
+  unitId String
+  costCenter CostCenter @relation(fields:[costCenterId], references:[id], onDelete:Restrict)
+  unit Unit @relation(fields:[unitId], references:[id], onDelete:Restrict)
+  @@id([costCenterId,unitId])
+}
+model Lookup {
+  id String @id @default(uuid())
+  kind String
+  name String
+  tag String?
+  active Boolean @default(true)
+  departments Employment[] @relation("Department")
+  jobs Employment[] @relation("Job")
+  assignmentDepartments Assignment[] @relation("AssignmentDepartment")
+  assignmentJobs Assignment[] @relation("AssignmentJob")
+  dependents Dependent[]
+  leaves Leave[]
+  @@unique([kind,name])
+}
+model Person {
+  id String @id @default(uuid())
+  name String
+  socialName String?
+  cpf String @unique
+  birthDate DateTime @db.Date
+  phone String?
+  email String?
+  address String?
+  emergencyName String?
+  emergencyPhone String?
+  emergencyRelation String?
+  notes String?
+  archived Boolean @default(false)
+  employments Employment[]
+  dependents Dependent[]
+}
+model Employment {
+  id String @id @default(uuid())
+  personId String
+  person Person @relation(fields:[personId], references:[id], onDelete:Restrict)
+  registration String @unique
+  unitId String
+  unit Unit @relation(fields:[unitId], references:[id], onDelete:Restrict)
+  costCenterId String
+  costCenter CostCenter @relation(fields:[costCenterId], references:[id], onDelete:Restrict)
+  departmentId String
+  department Lookup @relation("Department",fields:[departmentId], references:[id], onDelete:Restrict)
+  jobId String
+  job Lookup @relation("Job",fields:[jobId], references:[id], onDelete:Restrict)
+  managerId String?
+  manager Employment? @relation("Manager",fields:[managerId], references:[id], onDelete:Restrict)
+  reports Employment[] @relation("Manager")
+  kind String @default("CLT")
+  admission DateTime @db.Date
+  termination DateTime? @db.Date
+  status String @default("ATIVO")
+  reason String?
+  corporateEmail String?
+  weeklyHours Decimal? @db.Decimal(5,2)
+  assignments Assignment[]
+  periods VacationPeriod[]
+  leaves Leave[]
+  enrollments Enrollment[]
+  nominations Nomination[]
+  measurementLines MeasurementLine[]
+  @@index([personId])
+  @@index([unitId,costCenterId,departmentId])
+}
+model Assignment {
+  id String @id @default(uuid())
+  employmentId String
+  employment Employment @relation(fields:[employmentId], references:[id], onDelete:Restrict)
+  effective DateTime @db.Date
+  unitId String
+  unit Unit @relation(fields:[unitId], references:[id], onDelete:Restrict)
+  costCenterId String
+  costCenter CostCenter @relation(fields:[costCenterId], references:[id], onDelete:Restrict)
+  departmentId String
+  department Lookup @relation("AssignmentDepartment",fields:[departmentId], references:[id], onDelete:Restrict)
+  jobId String
+  job Lookup @relation("AssignmentJob",fields:[jobId], references:[id], onDelete:Restrict)
+  reason String
+  @@unique([employmentId,effective])
+}
+model Dependent {
+  id String @id @default(uuid())
+  personId String
+  person Person @relation(fields:[personId], references:[id], onDelete:Restrict)
+  name String
+  cpf String?
+  birthDate DateTime @db.Date
+  relationshipId String
+  relationship Lookup @relation(fields:[relationshipId], references:[id], onDelete:Restrict)
+  relationshipDescription String?
+  phone String?
+  notes String?
+  incomeTax Boolean @default(false)
+  active Boolean @default(true)
+  enrollments Enrollment[]
+  measurementLines MeasurementLine[]
+  @@index([personId])
+}
+model Benefit {
+  id String @id @default(uuid())
+  code String @unique
+  name String
+  kind String
+  provider String?
+  plan String?
+  contract String?
+  active Boolean @default(true)
+  notes String?
+  enrollments Enrollment[]
+  nominations Nomination[]
+  contractItems ContractItem[]
+}
+model Enrollment {
+  id String @id @default(uuid())
+  benefitId String
+  benefit Benefit @relation(fields:[benefitId], references:[id], onDelete:Restrict)
+  employmentId String
+  employment Employment @relation(fields:[employmentId], references:[id], onDelete:Restrict)
+  dependentId String?
+  dependent Dependent? @relation(fields:[dependentId], references:[id], onDelete:Restrict)
+  card String?
+  plan String?
+  start DateTime @db.Date
+  end DateTime? @db.Date
+  companyCost Decimal? @db.Decimal(12,2)
+  employeeCost Decimal? @db.Decimal(12,2)
+  active Boolean @default(true)
+  notes String?
+  measurementLines MeasurementLine[]
+  @@index([benefitId,employmentId,dependentId])
+}
+model Nomination {
+  id String @id @default(uuid())
+  employmentId String
+  employment Employment @relation(fields:[employmentId], references:[id], onDelete:Restrict)
+  benefitId String
+  benefit Benefit @relation(fields:[benefitId], references:[id], onDelete:Restrict)
+  start DateTime @db.Date
+  end DateTime? @db.Date
+  draft Boolean @default(true)
+  beneficiaries Json
+  @@index([employmentId,benefitId])
+}
+model Leave {
+  id String @id @default(uuid())
+  employmentId String
+  employment Employment @relation(fields:[employmentId], references:[id], onDelete:Restrict)
+  typeId String
+  type Lookup @relation(fields:[typeId], references:[id], onDelete:Restrict)
+  start DateTime @db.Date
+  expectedEnd DateTime? @db.Date
+  actualEnd DateTime? @db.Date
+  notes String?
+  review Boolean @default(true)
+  @@index([employmentId,start])
+}
+model VacationPeriod {
+  id String @id @default(uuid())
+  employmentId String
+  employment Employment @relation(fields:[employmentId], references:[id], onDelete:Restrict)
+  start DateTime @db.Date
+  end DateTime @db.Date
+  concessionStart DateTime @db.Date
+  concessionEnd DateTime @db.Date
+  target DateTime @db.Date
+  entitlement Int @default(30)
+  review Boolean @default(false)
+  source String @default("AUTO")
+  notes String?
+  bookings VacationBooking[]
+  adjustments VacationAdjustment[]
+  @@unique([employmentId,start])
+}
+model VacationBooking {
+  id String @id @default(uuid())
+  periodId String
+  period VacationPeriod @relation(fields:[periodId], references:[id], onDelete:Restrict)
+  start DateTime @db.Date
+  days Int
+  end DateTime @db.Date
+  returnDate DateTime @db.Date
+  status String @default("RASCUNHO")
+  reviewConfirmed Boolean @default(false)
+  consent Boolean @default(false)
+  notes String?
+  changedBy String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@index([periodId,start])
+}
+model VacationAdjustment {
+  id String @id @default(uuid())
+  periodId String
+  period VacationPeriod @relation(fields:[periodId], references:[id], onDelete:Restrict)
+  kind String
+  days Int
+  reason String
+  authorId String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+model Audit {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields:[userId], references:[id], onDelete:Restrict)
+  action String
+  entity String
+  entityId String
+  fields String[]
+  at DateTime @default(now()) @db.Timestamptz(3)
+  @@index([entity,entityId,at])
+}
+model ContractSequence {
+  kind String @id
+  value Int @default(0)
+}
+model Supplier {
+  id String @id @default(uuid())
+  code String @unique
+  name String
+  tradeName String?
+  document String?
+  contact String?
+  phone String?
+  email String?
+  notes String?
+  active Boolean @default(true)
+  paymentTermId String?
+  paymentTerm PaymentTerm? @relation(fields:[paymentTermId], references:[id], onDelete:Restrict)
+  categoryId String?
+  category ContractCategory? @relation(fields:[categoryId], references:[id], onDelete:Restrict)
+  contracts Contract[]
+  measurements Measurement[]
+  @@index([categoryId])
+}
+model ContractCategory {
+  id String @id @default(uuid())
+  code String @unique
+  name String @unique
+  active Boolean @default(true)
+  contracts Contract[]
+  suppliers Supplier[]
+  measurements Measurement[]
+}
+model PaymentTerm {
+  id String @id @default(uuid())
+  code String @unique
+  name String
+  mode String
+  day Int?
+  days Int?
+  active Boolean @default(true)
+  suppliers Supplier[]
+  contracts Contract[]
+}
+model Contract {
+  id String @id @default(uuid())
+  code String @unique
+  externalNumber String?
+  name String
+  supplierId String
+  supplier Supplier @relation(fields:[supplierId], references:[id], onDelete:Restrict)
+  unitId String
+  unit Unit @relation(fields:[unitId], references:[id], onDelete:Restrict)
+  categoryId String
+  category ContractCategory @relation(fields:[categoryId], references:[id], onDelete:Restrict)
+  paymentTermId String
+  paymentTerm PaymentTerm @relation(fields:[paymentTermId], references:[id], onDelete:Restrict)
+  paymentMode String
+  paymentDay Int?
+  paymentDays Int?
+  start DateTime @db.Date
+  end DateTime? @db.Date
+  adjustmentDate DateTime? @db.Date
+  alertDays Int @default(90)
+  kind String @default("FIXO")
+  status String @default("ELABORACAO")
+  activatedAt DateTime? @db.Timestamptz(3)
+  closedOn DateTime? @db.Date
+  closureReason String?
+  notes String?
+  version Int @default(1)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  items ContractItem[]
+  forecasts ContractForecast[]
+  measurements Measurement[]
+  @@index([status,start,end])
+  @@index([supplierId,unitId,categoryId])
+}
+model ContractItem {
+  id String @id @default(uuid())
+  code String @unique
+  contractId String
+  contract Contract @relation(fields:[contractId], references:[id], onDelete:Restrict)
+  name String
+  billingUnit String @default("MENSALIDADE")
+  quantity Decimal @db.Decimal(12,3)
+  unitPrice Decimal @db.Decimal(14,2)
+  allocationMode String @default("VALOR")
+  benefitId String?
+  benefit Benefit? @relation(fields:[benefitId], references:[id], onDelete:Restrict)
+  active Boolean @default(true)
+  measurementLines MeasurementLine[]
+  @@index([contractId,active])
+  @@index([benefitId])
+}
+model ContractForecast {
+  id String @id @default(uuid())
+  code String @unique
+  contractId String
+  contract Contract @relation(fields:[contractId], references:[id], onDelete:Restrict)
+  month DateTime @db.Date
+  due DateTime @db.Date
+  amount Decimal @db.Decimal(18,2)
+  status String @default("PREVISTA")
+  reason String?
+  snapshot Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  measurements Measurement[]
+  @@unique([contractId,month])
+  @@index([month,status,due])
+}
+model Measurement {
+  id String @id @default(uuid())
+  code String @unique
+  contractId String?
+  contract Contract? @relation(fields:[contractId], references:[id], onDelete:Restrict)
+  forecastId String?
+  forecast ContractForecast? @relation(fields:[forecastId], references:[id], onDelete:Restrict)
+  originalId String?
+  original Measurement? @relation("MeasurementComplements",fields:[originalId], references:[id], onDelete:Restrict)
+  complements Measurement[] @relation("MeasurementComplements")
+  supplierId String
+  supplier Supplier @relation(fields:[supplierId], references:[id], onDelete:Restrict)
+  unitId String
+  unit Unit @relation(fields:[unitId], references:[id], onDelete:Restrict)
+  categoryId String
+  category ContractCategory @relation(fields:[categoryId], references:[id], onDelete:Restrict)
+  month DateTime @db.Date
+  invoice String?
+  issue DateTime @db.Date
+  due DateTime @db.Date
+  amount Decimal @db.Decimal(18,2)
+  mode String @default("VALOR")
+  status String @default("PREENCHIMENTO")
+  version Int @default(1)
+  notes String?
+  reviewConfirmed Boolean @default(false)
+  varianceConfirmed Boolean @default(false)
+  sourceSnapshot Json
+  confirmedSnapshot Json?
+  confirmedAt DateTime? @db.Timestamptz(3)
+  // Metadados do fluxo de envio removido. Preservados apenas para histórico;
+  // não participam das situações nem das ações atuais da medição.
+  sentAt DateTime? @db.Timestamptz(3)
+  sentNote String?
+  changedAfterSend Boolean @default(false)
+  changedBy String
+  author User @relation(fields:[changedBy], references:[id], onDelete:Restrict)
+  lines MeasurementLine[]
+  history MeasurementHistory[]
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@index([month,status,due])
+  @@index([contractId,month])
+  @@index([originalId])
+}
+model MeasurementLine {
+  id String @id @default(uuid())
+  measurementId String
+  measurement Measurement @relation(fields:[measurementId], references:[id], onDelete:Restrict)
+  kind String
+  unitId String
+  unit Unit @relation(fields:[unitId], references:[id], onDelete:Restrict)
+  costCenterId String
+  costCenter CostCenter @relation(fields:[costCenterId], references:[id], onDelete:Restrict)
+  employmentId String?
+  employment Employment? @relation(fields:[employmentId], references:[id], onDelete:Restrict)
+  dependentId String?
+  dependent Dependent? @relation(fields:[dependentId], references:[id], onDelete:Restrict)
+  enrollmentId String?
+  enrollment Enrollment? @relation(fields:[enrollmentId], references:[id], onDelete:Restrict)
+  itemId String?
+  item ContractItem? @relation(fields:[itemId], references:[id], onDelete:Restrict)
+  unitName String
+  costCenterName String
+  costCenterCode String
+  employeeName String?
+  coveredName String?
+  plan String?
+  reference Decimal @db.Decimal(18,2)
+  amount Decimal @db.Decimal(18,2)
+  percent Decimal @db.Decimal(5,2)
+  reason String?
+  @@index([measurementId,kind])
+  @@index([enrollmentId])
+}
+model MeasurementHistory {
+  id String @id @default(uuid())
+  measurementId String
+  measurement Measurement @relation(fields:[measurementId], references:[id], onDelete:Restrict)
+  action String
+  reason String
+  snapshot Json
+  authorId String
+  author User @relation(fields:[authorId], references:[id], onDelete:Restrict)
+  at DateTime @default(now()) @db.Timestamptz(3)
+  @@index([measurementId,at])
+}
